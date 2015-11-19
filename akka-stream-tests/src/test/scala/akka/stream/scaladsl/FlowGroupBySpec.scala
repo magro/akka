@@ -99,6 +99,7 @@ class FlowGroupBySpec extends AkkaSpec {
         s1.expectNext(5)
         s1.expectComplete()
 
+        masterSubscription.request(1)
         masterSubscriber.expectComplete()
       }
     }
@@ -117,6 +118,7 @@ class FlowGroupBySpec extends AkkaSpec {
         substream.expectNext(6)
         substream.expectComplete()
 
+        masterSubscription.request(1)
         masterSubscriber.expectComplete()
       }
     }
@@ -131,26 +133,6 @@ class FlowGroupBySpec extends AkkaSpec {
       val downstreamSubscription = subscriber.expectSubscription()
       downstreamSubscription.cancel()
       upstreamSubscription.expectCancellation()
-    }
-
-    "accept cancellation of master stream when substreams are open" in assertAllStagesStopped {
-      new SubstreamsSupport(groupCount = 3, elementCount = 13) {
-        val substream = StreamPuppet(getSubFlow(1).runWith(Sink.publisher(false)))
-
-        substream.request(1)
-        substream.expectNext(1)
-
-        masterSubscription.cancel()
-        masterSubscriber.expectNoMsg(100.millis)
-
-        // Open substreams still work, others are discarded
-        substream.request(4)
-        substream.expectNext(4)
-        substream.expectNext(7)
-        substream.expectNext(10)
-        substream.expectNext(13)
-        substream.expectComplete()
-      }
     }
 
     "work with empty input stream" in assertAllStagesStopped {
