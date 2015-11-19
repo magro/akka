@@ -85,21 +85,21 @@ private[http] object Websocket {
     }
 
     /** Collects user-level API messages from MessageDataParts */
-    val collectMessage: Flow[Source[MessageDataPart, Unit], Message, Unit] =
-      Flow[Source[MessageDataPart, Unit]]
-        .via(headAndTailFlow)
+    val collectMessage: Flow[MessageDataPart, Message, Unit] =
+      Flow[MessageDataPart]
+        .prefixAndTail(1)
         .map {
-          case (TextMessagePart(text, true), remaining) ⇒
+          case (TextMessagePart(text, true) :: Nil, remaining) ⇒
             TextMessage.Strict(text)
-          case (first @ TextMessagePart(text, false), remaining) ⇒
+          case (first @ TextMessagePart(text, false) :: Nil, remaining) ⇒
             TextMessage(
               (Source.single(first) ++ remaining)
                 .collect {
                   case t: TextMessagePart if t.data.nonEmpty ⇒ t.data
                 })
-          case (BinaryMessagePart(data, true), remaining) ⇒
+          case (BinaryMessagePart(data, true) :: Nil, remaining) ⇒
             BinaryMessage.Strict(data)
-          case (first @ BinaryMessagePart(data, false), remaining) ⇒
+          case ((first @ BinaryMessagePart(data, false)) :: Nil, remaining) ⇒
             BinaryMessage(
               (Source.single(first) ++ remaining)
                 .collect {
@@ -111,10 +111,11 @@ private[http] object Websocket {
       Flow[MessagePart]
         .transform(() ⇒ new PrepareForUserHandler)
         .splitWhen(_.isMessageEnd) // FIXME using splitAfter from #16885 would simplify protocol a lot
-        .map(_.collect {
+        .collect {
           case m: MessageDataPart ⇒ m
-        })
+        }
         .via(collectMessage)
+        .flatten(1)
         .named("ws-prepare-messages")
 
     def renderMessages: Flow[Message, FrameStart, Unit] =

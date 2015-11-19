@@ -68,13 +68,13 @@ private[http] object OutgoingConnectionBlueprint {
     val responsePrep = Flow[List[ResponseOutput]]
       .mapConcat(identityFunc)
       .splitWhen(x ⇒ x.isInstanceOf[MessageStart] || x == MessageEnd)
-      .via(headAndTailFlow)
+      .prefixAndTail(1)
       .collect {
-        case (ResponseStart(statusCode, protocol, headers, createEntity, _), entityParts) ⇒
+        case (ResponseStart(statusCode, protocol, headers, createEntity, _) :: Nil, entityParts) ⇒
           val entity = createEntity(entityParts) withSizeLimit parserSettings.maxContentLength
           HttpResponse(statusCode, headers, entity, protocol)
-        case (MessageStartError(_, info), _) ⇒ throw IllegalResponseException(info)
-      }
+        case (MessageStartError(_, info) :: Nil, _) ⇒ throw IllegalResponseException(info)
+      }.flatten(1)
 
     val core = BidiFlow.fromGraph(FlowGraph.create() { implicit b ⇒
       import FlowGraph.Implicits._

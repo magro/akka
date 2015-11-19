@@ -759,7 +759,7 @@ final class Flow[-In, +Out, +Mat](delegate: scaladsl.Flow[In, Out, Mat]) extends
    *
    */
   def groupBy[K](f: function.Function[Out, K]): javadsl.Flow[In, akka.japi.Pair[K, javadsl.Source[Out @uncheckedVariance, Unit]], Mat] =
-    new Flow(delegate.groupBy(f.apply).map { case (k, p) ⇒ akka.japi.Pair(k, p.asJava) }) // TODO optimize to one step
+    ???
 
   /**
    * This operation applies the given predicate to all incoming elements and
@@ -803,7 +803,7 @@ final class Flow[-In, +Out, +Mat](delegate: scaladsl.Flow[In, Out, Mat]) extends
    * See also [[Flow.splitAfter]].
    */
   def splitWhen(p: function.Predicate[Out]): javadsl.Flow[In, Source[Out, Unit], Mat] =
-    new Flow(delegate.splitWhen(p.test).map(_.asJava))
+    ???
 
   /**
    * This operation applies the given predicate to all incoming elements and
@@ -838,7 +838,7 @@ final class Flow[-In, +Out, +Mat](delegate: scaladsl.Flow[In, Out, Mat]) extends
    * See also [[Flow.splitWhen]].
    */
   def splitAfter[U >: Out](p: function.Predicate[Out]): javadsl.Flow[In, Source[Out, Unit], Mat] =
-    new Flow(delegate.splitAfter(p.test).map(_.asJava))
+    ???
 
   /**
    * Transform each input element into a `Source` of output elements that is
@@ -965,7 +965,7 @@ final class Flow[-In, +Out, +Mat](delegate: scaladsl.Flow[In, Out, Mat]) extends
   def zipMat[T, M, M2](that: Graph[SourceShape[T], M],
                        matF: function.Function2[Mat, M, M2]): javadsl.Flow[In, Out @uncheckedVariance Pair T, M2] =
     this.viaMat(Flow.fromGraph(FlowGraph.create(that,
-      new function.Function2[FlowGraph.Builder[M], SourceShape[T], FlowShape[Out, Out @ uncheckedVariance Pair T]] {
+      new function.Function2[FlowGraph.Builder[M], SourceShape[T], FlowShape[Out, Out @uncheckedVariance Pair T]] {
         def apply(b: FlowGraph.Builder[M], s: SourceShape[T]): FlowShape[Out, Out @uncheckedVariance Pair T] = {
           val zip: FanInShape2[Out, T, Out Pair T] = b.add(Zip.create[Out, T])
           b.from(s).toInlet(zip.in1)

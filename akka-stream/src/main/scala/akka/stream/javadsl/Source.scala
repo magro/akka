@@ -840,7 +840,7 @@ final class Source[+Out, +Mat](delegate: scaladsl.Source[Out, Mat]) extends Grap
    * to consume only one of them.
    */
   def groupBy[K](f: function.Function[Out, K]): javadsl.Source[akka.japi.Pair[K, javadsl.Source[Out @uncheckedVariance, Unit]], Mat] =
-    new Source(delegate.groupBy(f.apply).map { case (k, p) ⇒ akka.japi.Pair(k, p.asJava) }) // TODO optimize to one step
+    ???
 
   /**
    * This operation applies the given predicate to all incoming elements and
@@ -882,7 +882,7 @@ final class Source[+Out, +Mat](delegate: scaladsl.Source[Out, Mat]) extends Grap
    * See also [[Source.splitAfter]].
    */
   def splitWhen(p: function.Predicate[Out]): javadsl.Source[javadsl.Source[Out, Unit], Mat] =
-    new Source(delegate.splitWhen(p.test).map(_.asJava))
+    ???
 
   /**
    * This operation applies the given predicate to all incoming elements and
@@ -917,7 +917,7 @@ final class Source[+Out, +Mat](delegate: scaladsl.Source[Out, Mat]) extends Grap
    * See also [[Source.splitWhen]].
    */
   def splitAfter[U >: Out](p: function.Predicate[Out]): javadsl.Source[Source[Out, Unit], Mat] =
-    new Source(delegate.splitAfter(p.test).map(_.asJava))
+    ???
 
   /**
    * Transform each input element into a `Source` of output elements that is

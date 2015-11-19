@@ -30,6 +30,9 @@ final class Flow[-In, +Out, +Mat](private[stream] override val module: Module)
 
   override type Repr[+O, +M] = Flow[In @uncheckedVariance, O, M]
 
+  override type Flattened[+U] <: Repr[U, Mat]
+  override type Closed <: Sink[In, Mat]
+
   private[stream] def isIdentity: Boolean = this.module eq Stages.identityGraph.module
 
   def viaMat[T, Mat2, Mat3](flow: Graph[FlowShape[Out, T], Mat2])(combine: (Mat, Mat2) ⇒ Mat3): Flow[In, T, Mat3] = {
@@ -328,8 +331,12 @@ final case class RunnableGraph[+Mat](private[stream] val module: StreamLayout.Mo
  */
 trait FlowOps[+Out, +Mat] {
   import akka.stream.impl.Stages._
-  type Repr[+O, +M] <: FlowOps[O, M]
-  type Flattened[U] <: Repr[U, Mat]
+  type Repr[+O, +M] <: FlowOps[O, _]
+
+  // result of Flattening a Source’s SubFlow is a Source, analog for starting from Flow
+  type Flattened[+U] <: Repr[U, Mat]
+
+  // result of closing a Source is RunnableGraph, closing a Flow is Sink
   type Closed <: Graph[_, Mat]
 
   /**
@@ -920,7 +927,7 @@ trait FlowOps[+Out, +Mat] {
   def groupBy[K](f: Out ⇒ K): SubFlow[Out, Mat] {
     type Flattened[U] = FlowOps.this.Flattened[U]
     type Closed = FlowOps.this.Closed
-  }
+  } = ???
 
   /**
    * This operation applies the given predicate to all incoming elements and
@@ -966,7 +973,7 @@ trait FlowOps[+Out, +Mat] {
   def splitWhen(p: Out ⇒ Boolean): SubFlow[Out, Mat] {
     type Flattened[U] = FlowOps.this.Flattened[U]
     type Closed = FlowOps.this.Closed
-  }
+  } = ???
 
   /**
    * This operation applies the given predicate to all incoming elements and
@@ -1003,7 +1010,7 @@ trait FlowOps[+Out, +Mat] {
   def splitAfter(p: Out ⇒ Boolean): SubFlow[Out, Mat] {
     type Flattened[U] = FlowOps.this.Flattened[U]
     type Closed = FlowOps.this.Closed
-  }
+  } = ???
 
   /**
    * Transform each input element into a `Source` of output elements that is
