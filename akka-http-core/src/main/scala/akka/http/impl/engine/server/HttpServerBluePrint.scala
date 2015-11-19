@@ -172,7 +172,7 @@ private[http] object HttpServerBluePrint {
   }
 
   class BypassMerge(settings: ServerSettings, log: LoggingAdapter)
-      extends GraphStage[FanInShape3[MessageStart with RequestOutput, OneHundredContinue.type, HttpResponse, ResponseRenderingContext]] {
+    extends GraphStage[FanInShape3[MessageStart with RequestOutput, OneHundredContinue.type, HttpResponse, ResponseRenderingContext]] {
     private val bypassInput = Inlet[MessageStart with RequestOutput]("bypassInput")
     private val oneHundredContinue = Inlet[OneHundredContinue.type]("100continue")
     private val applicationInput = Inlet[HttpResponse]("applicationInput")

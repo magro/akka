@@ -34,10 +34,13 @@ final class Source[+Out, +Mat](private[stream] override val module: Module)
   override type ReprMat[+O, +M] = Source[O, M]
 
   override type Closed = RunnableGraph[Mat @uncheckedVariance]
+  override type ClosedMat[+M] = RunnableGraph[M]
 
   override val shape: SourceShape[Out] = module.shape.asInstanceOf[SourceShape[Out]]
 
-  def viaMat[T, Mat2, Mat3](flow: Graph[FlowShape[Out, T], Mat2])(combine: (Mat, Mat2) ⇒ Mat3): Source[T, Mat3] = {
+  override def via[T, Mat2](flow: Graph[FlowShape[Out, T], Mat2]): Repr[T] = viaMat(flow)(Keep.left)
+
+  override def viaMat[T, Mat2, Mat3](flow: Graph[FlowShape[Out, T], Mat2])(combine: (Mat, Mat2) ⇒ Mat3): Source[T, Mat3] = {
     if (flow.module eq Stages.identityGraph.module) this.asInstanceOf[Source[T, Mat3]]
     else {
       val flowCopy = flow.module.carbonCopy

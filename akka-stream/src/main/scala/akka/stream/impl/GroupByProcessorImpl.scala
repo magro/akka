@@ -71,7 +71,7 @@ private[akka] class GroupByProcessorImpl(settings: ActorMaterializerSettings, va
     } else {
       val substreamOutput = createSubstreamOutput()
       val substreamFlow = Source(substreamOutput) // substreamOutput is a Publisher
-      primaryOutputs.enqueueOutputElement((key, substreamFlow))
+      primaryOutputs.enqueueOutputElement(substreamFlow)
       keyToSubstreamOutput(key) = substreamOutput
       nextPhase(dispatchToSubstream(elem, substreamOutput))
     }

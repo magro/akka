@@ -743,13 +743,14 @@ object FlowGraph extends GraphApply {
 
     // Although Mat is always Unit, it cannot be removed as a type parameter, otherwise the "override type"
     // won't work below
-    trait PortOps[+Out] extends FlowOps[Out, Unit] with CombinerBase[Out] { this: FlowOpsMat[Out, Unit] ⇒
+    trait PortOps[+Out] extends FlowOps[Out, Unit] with CombinerBase[Out] {
       override type Repr[+O] = PortOps[O]
+      override type Closed = Unit
       def outlet: Outlet[Out @uncheckedVariance]
     }
 
     private class PortOpsImpl[+Out](override val outlet: Outlet[Out @uncheckedVariance], b: Builder[_])
-      extends PortOps[Out] with FlowOpsMat[Out, Unit] {
+      extends PortOps[Out] {
 
       override def withAttributes(attr: Attributes): Repr[Out] =
         throw new UnsupportedOperationException("Cannot set attributes on chained ops from a junction output port")
@@ -759,13 +760,13 @@ object FlowGraph extends GraphApply {
       override def via[T, Mat2](flow: Graph[FlowShape[Out, T], Mat2]): Repr[T] =
         super.~>(flow)(b)
 
-      override def viaMat[T, Mat2, Mat3](flow: Graph[FlowShape[Out, T], Mat2])(combine: (Unit, Mat2) ⇒ Mat3) =
-        throw new UnsupportedOperationException("Cannot use viaMat on a port")
-
       override private[scaladsl] def deprecatedAndThen[U](op: StageModule): Repr[U] = {
         b.deprecatedAndThen(outlet, op)
         new PortOpsImpl(op.shape.outlet.asInstanceOf[Outlet[U]], b)
       }
+
+      def to[Mat2](sink: Graph[SinkShape[Out], Mat2]): Closed =
+        super.~>(sink)(b)
 
     }
 

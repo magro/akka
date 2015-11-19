@@ -13,9 +13,10 @@ import scala.annotation.unchecked.uncheckedVariance
  * SubFlows cannot contribute to the super-flow’s materialized value since they
  * are materialized later, during the runtime of the flow graph processing.
  */
-trait SubFlow[+Out, +Mat, +F[+_], +C] extends FlowOps[Out, Mat] { this: FlowOpsMat[Out, Mat] ⇒
+trait SubFlow[+Out, +Mat, +F[+_], C] extends FlowOps[Out, Mat] {
 
   override type Repr[+T] = SubFlow[T, Mat @uncheckedVariance, F @uncheckedVariance, C @uncheckedVariance]
+  override type Closed = C
 
   /**
    * Attach a [[Sink]] to each sub-flow, closing the overall Graph that is being

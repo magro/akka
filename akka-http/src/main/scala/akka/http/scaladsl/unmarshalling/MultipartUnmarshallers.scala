@@ -88,11 +88,11 @@ trait MultipartUnmarshallers {
                     val bodyParts = entity.dataBytes
                       .transform(() ⇒ parser)
                       .splitWhen(_.isInstanceOf[PartStart])
-                      .via(headAndTailFlow)
+                      .prefixAndTail(1)
                       .collect {
-                        case (BodyPartStart(headers, createEntity), entityParts) ⇒ createBodyPart(createEntity(entityParts), headers)
-                        case (ParseError(errorInfo), _)                          ⇒ throw ParsingException(errorInfo)
-                      }
+                        case (BodyPartStart(headers, createEntity) :: Nil, entityParts) ⇒ createBodyPart(createEntity(entityParts), headers)
+                        case (ParseError(errorInfo) :: Nil, _)                          ⇒ throw ParsingException(errorInfo)
+                      }.mergeBack(1)
                     createStreamed(entity.contentType.mediaType.asInstanceOf[MultipartMediaType], bodyParts)
                 }
               }
