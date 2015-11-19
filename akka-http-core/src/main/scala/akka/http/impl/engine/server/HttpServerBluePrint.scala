@@ -87,7 +87,7 @@ private[http] object HttpServerBluePrint {
             val entity = createEntity(entityParts) withSizeLimit parserSettings.maxContentLength
             HttpRequest(effectiveMethod, uri, effectiveHeaders, entity, protocol)
           case (_, src) ⇒ src.runWith(Sink.ignore)
-        }.flatten(1)
+        }.mergeBack(1)
         .collect {
           case r: HttpRequest ⇒ r
         }

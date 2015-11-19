@@ -482,7 +482,7 @@ class RequestParserSpec extends FreeSpec with Matchers with BeforeAndAfterAll {
             Right(HttpRequest(method, uri, headers, createEntity(entityParts), protocol))
           case ((x @ (MessageStartError(_, _) | EntityStreamError(_))) :: Nil, _) ⇒ Left(x)
         }
-        .flatten(1)
+        .mergeBack(1)
         .flatMapConcat { x ⇒
           Source {
             x match {

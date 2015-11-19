@@ -6,23 +6,22 @@ package akka.stream.scaladsl
 import akka.stream._
 import akka.stream.impl.Stages.StageModule
 import language.higherKinds
+import scala.annotation.unchecked.uncheckedVariance
 
 /**
  * A “stream of streams” sub-flow of data elements, e.g. produced by `groupBy`.
  * SubFlows cannot contribute to the super-flow’s materialized value since they
  * are materialized later, during the runtime of the flow graph processing.
  */
-trait SubFlow[+Out, +Mat] extends FlowOps[Out, Mat] {
-  override type Repr[+T, +M] <: SubFlow[T, Mat] {
-    type Flattened[U] = SubFlow.this.Flattened[U]
-    type Closed = SubFlow.this.Closed
-  }
+trait SubFlow[+Out, +Mat, +F[+_], +C] extends FlowOps[Out, Mat] { this: FlowOpsMat[Out, Mat] ⇒
+
+  override type Repr[+T] = SubFlow[T, Mat @uncheckedVariance, F @uncheckedVariance, C @uncheckedVariance]
 
   /**
    * Attach a [[Sink]] to each sub-flow, closing the overall Graph that is being
    * constructed.
    */
-  def to[M](sink: Graph[SinkShape[Out], M]): Closed
+  def to[M](sink: Graph[SinkShape[Out], M]): C
 
   /**
    * Flatten the sub-flows back into the super-flow, performing a merge of the
@@ -31,5 +30,5 @@ trait SubFlow[+Out, +Mat] extends FlowOps[Out, Mat] {
    * concurrently (as is generally the case when using `groupBy` on an unordered
    * input stream).
    */
-  def flatten(breadth: Int): Flattened[Out]
+  def mergeBack(breadth: Int): F[Out]
 }

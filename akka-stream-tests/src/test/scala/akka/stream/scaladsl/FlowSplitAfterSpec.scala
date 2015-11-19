@@ -15,7 +15,17 @@ import org.reactivestreams.Publisher
 
 import scala.concurrent.duration._
 
+object FlowSplitAfterSpec {
+  import language.higherKinds
+
+  implicit class Lift[M](val f: SubFlow[Int, M, Source[Int, M]#Repr, RunnableGraph[M]]) extends AnyVal {
+    def lift = f.prefixAndTail(1).map(_._2).mergeBack(1)
+  }
+
+}
+
 class FlowSplitAfterSpec extends AkkaSpec {
+  import FlowSplitAfterSpec._
 
   val settings = ActorMaterializerSettings(system)
     .withInputBuffer(initialSize = 2, maxSize = 2)
@@ -37,7 +47,7 @@ class FlowSplitAfterSpec extends AkkaSpec {
 
   class SubstreamsSupport(splitAfter: Int = 3, elementCount: Int = 6) {
     val source = Source(1 to elementCount)
-    val groupStream = source.splitAfter(_ == splitAfter).runWith(Sink.publisher(false))
+    val groupStream = source.splitAfter(_ == splitAfter).lift.runWith(Sink.publisher(false))
     val masterSubscriber = TestSubscriber.manualProbe[Source[Int, _]]()
 
     groupStream.subscribe(masterSubscriber)
@@ -138,6 +148,7 @@ class FlowSplitAfterSpec extends AkkaSpec {
       val exc = TE("test")
       val publisher = Source(publisherProbeProbe)
         .splitAfter(elem ⇒ if (elem == 3) throw exc else elem % 3 == 0)
+        .lift
         .runWith(Sink.publisher(false))
       val subscriber = TestSubscriber.manualProbe[Source[Int, Unit]]()
       publisher.subscribe(subscriber)
@@ -171,6 +182,7 @@ class FlowSplitAfterSpec extends AkkaSpec {
       val publisher = Source(publisherProbeProbe)
         .splitAfter(elem ⇒ if (elem == 3) throw exc else elem % 3 == 0)
         .withAttributes(ActorAttributes.supervisionStrategy(resumingDecider))
+        .lift
         .runWith(Sink.publisher(false))
       val subscriber = TestSubscriber.manualProbe[Source[Int, Unit]]()
       publisher.subscribe(subscriber)
@@ -216,7 +228,7 @@ class FlowSplitAfterSpec extends AkkaSpec {
       val up = TestPublisher.manualProbe[Int]()
       val down = TestSubscriber.manualProbe[Source[Int, Unit]]()
 
-      val flowSubscriber = Source.subscriber[Int].splitAfter(_ % 3 == 0).to(Sink(down)).run()
+      val flowSubscriber = Source.subscriber[Int].splitAfter(_ % 3 == 0).lift.to(Sink(down)).run()
 
       val downstream = down.expectSubscription()
       downstream.cancel()

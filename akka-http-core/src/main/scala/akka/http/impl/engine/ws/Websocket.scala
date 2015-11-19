@@ -115,7 +115,7 @@ private[http] object Websocket {
           case m: MessageDataPart ⇒ m
         }
         .via(collectMessage)
-        .flatten(1)
+        .mergeBack(1)
         .named("ws-prepare-messages")
 
     def renderMessages: Flow[Message, FrameStart, Unit] =

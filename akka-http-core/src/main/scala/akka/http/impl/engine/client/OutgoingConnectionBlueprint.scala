@@ -74,7 +74,7 @@ private[http] object OutgoingConnectionBlueprint {
           val entity = createEntity(entityParts) withSizeLimit parserSettings.maxContentLength
           HttpResponse(statusCode, headers, entity, protocol)
         case (MessageStartError(_, info) :: Nil, _) ⇒ throw IllegalResponseException(info)
-      }.flatten(1)
+      }.mergeBack(1)
 
     val core = BidiFlow.fromGraph(FlowGraph.create() { implicit b ⇒
       import FlowGraph.Implicits._
