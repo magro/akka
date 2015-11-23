@@ -477,10 +477,10 @@ class RequestParserSpec extends FreeSpec with Matchers with BeforeAndAfterAll {
         .splitWhen(x ⇒ x.isInstanceOf[MessageStart] || x.isInstanceOf[EntityStreamError])
         .prefixAndTail(1)
         .collect {
-          case (RequestStart(method, uri, protocol, headers, createEntity, _, close) :: Nil, entityParts) ⇒
+          case (Seq(RequestStart(method, uri, protocol, headers, createEntity, _, close)), entityParts) ⇒
             closeAfterResponseCompletion :+= close
             Right(HttpRequest(method, uri, headers, createEntity(entityParts), protocol))
-          case ((x @ (MessageStartError(_, _) | EntityStreamError(_))) :: Nil, _) ⇒ Left(x)
+          case (Seq(x @ (MessageStartError(_, _) | EntityStreamError(_))), _) ⇒ Left(x)
         }
         .mergeBack(1)
         .flatMapConcat { x ⇒

@@ -90,8 +90,8 @@ trait MultipartUnmarshallers {
                       .splitWhen(_.isInstanceOf[PartStart])
                       .prefixAndTail(1)
                       .collect {
-                        case (BodyPartStart(headers, createEntity) :: Nil, entityParts) ⇒ createBodyPart(createEntity(entityParts), headers)
-                        case (ParseError(errorInfo) :: Nil, _)                          ⇒ throw ParsingException(errorInfo)
+                        case (Seq(BodyPartStart(headers, createEntity)), entityParts) ⇒ createBodyPart(createEntity(entityParts), headers)
+                        case (Seq(ParseError(errorInfo)), _)                          ⇒ throw ParsingException(errorInfo)
                       }.mergeBack(1)
                     createStreamed(entity.contentType.mediaType.asInstanceOf[MultipartMediaType], bodyParts)
                 }

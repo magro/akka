@@ -839,8 +839,8 @@ final class Source[+Out, +Mat](delegate: scaladsl.Source[Out, Mat]) extends Grap
    * care to unblock (or cancel) all of the produced streams even if you want
    * to consume only one of them.
    */
-  def groupBy[K](f: function.Function[Out, K]): javadsl.Source[akka.japi.Pair[K, javadsl.Source[Out @uncheckedVariance, Unit]], Mat] =
-    ???
+  def groupBy[K](f: function.Function[Out, K]): SubSource[Out @uncheckedVariance, Mat] =
+    new SubSource(delegate.groupBy(f.apply))
 
   /**
    * This operation applies the given predicate to all incoming elements and
@@ -881,8 +881,8 @@ final class Source[+Out, +Mat](delegate: scaladsl.Source[Out, Mat]) extends Grap
    *
    * See also [[Source.splitAfter]].
    */
-  def splitWhen(p: function.Predicate[Out]): javadsl.Source[javadsl.Source[Out, Unit], Mat] =
-    ???
+  def splitWhen(p: function.Predicate[Out]): SubSource[Out, Mat] =
+    new SubSource(delegate.splitWhen(p.test))
 
   /**
    * This operation applies the given predicate to all incoming elements and
@@ -916,8 +916,8 @@ final class Source[+Out, +Mat](delegate: scaladsl.Source[Out, Mat]) extends Grap
    *
    * See also [[Source.splitWhen]].
    */
-  def splitAfter[U >: Out](p: function.Predicate[Out]): javadsl.Source[Source[Out, Unit], Mat] =
-    ???
+  def splitAfter[U >: Out](p: function.Predicate[Out]): SubSource[Out, Mat] =
+    new SubSource(delegate.splitAfter(p.test))
 
   /**
    * Transform each input element into a `Source` of output elements that is

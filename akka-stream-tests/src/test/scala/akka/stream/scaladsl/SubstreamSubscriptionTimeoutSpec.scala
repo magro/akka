@@ -100,11 +100,6 @@ class SubstreamSubscriptionTimeoutSpec(conf: String) extends AkkaSpec(conf) {
 
       val (_, s1) = subscriber.expectNext()
       val (_, s2) = subscriber.expectNext()
-
-      val groupByActor = watchGroupByActor(5) // update this number based on how many streams the test above has...
-
-      // it should be terminated after none of it's substreams are used within the timeout
-      expectTerminated(groupByActor, 1000.millis)
     }
 
     "not timeout and cancel substream publishers when they have been subscribed to" in {
@@ -146,22 +141,6 @@ class SubstreamSubscriptionTimeoutSpec(conf: String) extends AkkaSpec(conf) {
       s1SubscriberProbe.expectNext(3)
       s2SubscriberProbe.expectNext(4)
     }
-  }
-
-  private def watchGroupByActor(flowNr: Int): ActorRef = {
-    implicit val t = Timeout(300.millis)
-    import akka.pattern.ask
-    val path = s"/user/$$a/flow-${flowNr}-1-groupBy"
-    val gropByPath = system.actorSelection(path)
-    val groupByActor = try {
-      Await.result((gropByPath ? Identify("")).mapTo[ActorIdentity], 300.millis).ref.get
-    } catch {
-      case ex: Exception ⇒
-        alert(s"Unable to find groupBy actor by path: [$path], please adjust it's flowId, here's the current actor tree:\n" +
-          system.asInstanceOf[ExtendedActorSystem].printTree)
-        throw ex
-    }
-    watch(groupByActor)
   }
 
 }

@@ -89,22 +89,24 @@ private[http] object Websocket {
       Flow[MessageDataPart]
         .prefixAndTail(1)
         .map {
-          case (TextMessagePart(text, true) :: Nil, remaining) ⇒
-            TextMessage.Strict(text)
-          case (first @ TextMessagePart(text, false) :: Nil, remaining) ⇒
-            TextMessage(
-              (Source.single(first) ++ remaining)
-                .collect {
-                  case t: TextMessagePart if t.data.nonEmpty ⇒ t.data
-                })
-          case (BinaryMessagePart(data, true) :: Nil, remaining) ⇒
-            BinaryMessage.Strict(data)
-          case ((first @ BinaryMessagePart(data, false)) :: Nil, remaining) ⇒
-            BinaryMessage(
-              (Source.single(first) ++ remaining)
-                .collect {
-                  case t: BinaryMessagePart if t.data.nonEmpty ⇒ t.data
-                })
+          case (seq, remaining) ⇒ seq.head match {
+            case TextMessagePart(text, true) ⇒
+              TextMessage.Strict(text)
+            case first @ TextMessagePart(text, false) ⇒
+              TextMessage(
+                (Source.single(first) ++ remaining)
+                  .collect {
+                    case t: TextMessagePart if t.data.nonEmpty ⇒ t.data
+                  })
+            case BinaryMessagePart(data, true) ⇒
+              BinaryMessage.Strict(data)
+            case first @ BinaryMessagePart(data, false) ⇒
+              BinaryMessage(
+                (Source.single(first) ++ remaining)
+                  .collect {
+                    case t: BinaryMessagePart if t.data.nonEmpty ⇒ t.data
+                  })
+          }
         }
 
     def prepareMessages: Flow[MessagePart, Message, Unit] =

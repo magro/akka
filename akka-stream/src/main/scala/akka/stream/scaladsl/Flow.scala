@@ -906,14 +906,18 @@ trait FlowOps[+Out, +Mat] {
    *
    */
   def groupBy[K](f: Out ⇒ K): SubFlow[Out, Mat, Repr, Closed] = {
+    implicit def mat = GraphInterpreter.currentInterpreter.materializer
     val merge = new SubFlowImpl.MergeBack[Out, Repr] {
       override def apply[T](flow: Flow[Out, T, Unit], breadth: Int): Repr[T] =
         deprecatedAndThen[Source[Out, Unit]](GroupBy(f.asInstanceOf[Any ⇒ Any]))
-          .map(_.via(flow)).flatMapConcat(identity).asInstanceOf[Repr[T]]
+          .map(_.via(flow))
+          .map(s ⇒ Source(s.runWith(Sink.publisher(false)))) // need to be eager as a workaround for now
+          .flatMapConcat(identity)
+          .asInstanceOf[Repr[T]]
     }
     val finish: (Sink[Out, Unit]) ⇒ Closed = s ⇒
       deprecatedAndThen[Source[Out, Unit]](GroupBy(f.asInstanceOf[Any ⇒ Any]))
-        .to(Sink.foreach(_.runWith(s)(GraphInterpreter.currentInterpreter.materializer)))
+        .to(Sink.foreach(_.runWith(s)))
         .asInstanceOf[Closed]
     new SubFlowImpl(Flow[Out], merge, finish)
   }
@@ -959,7 +963,20 @@ trait FlowOps[+Out, +Mat] {
    *
    * See also [[FlowOps.splitAfter]].
    */
-  def splitWhen(p: Out ⇒ Boolean): SubFlow[Out, Mat, Repr, Closed] = ???
+  def splitWhen(p: Out ⇒ Boolean): SubFlow[Out, Mat, Repr, Closed] = {
+    val merge = new SubFlowImpl.MergeBack[Out, Repr] {
+      override def apply[T](flow: Flow[Out, T, Unit], breadth: Int): Repr[T] =
+        deprecatedAndThen[Source[Out, Unit]](Split.when(p.asInstanceOf[Any ⇒ Boolean]))
+          .map(_.via(flow))
+          .flatMapConcat(identity)
+          .asInstanceOf[Repr[T]]
+    }
+    val finish: (Sink[Out, Unit]) ⇒ Closed = s ⇒
+      deprecatedAndThen[Source[Out, Unit]](Split.when(p.asInstanceOf[Any ⇒ Boolean]))
+        .to(Sink.foreach(_.runWith(s)(GraphInterpreter.currentInterpreter.materializer)))
+        .asInstanceOf[Closed]
+    new SubFlowImpl(Flow[Out], merge, finish)
+  }
 
   /**
    * This operation applies the given predicate to all incoming elements and
@@ -993,7 +1010,20 @@ trait FlowOps[+Out, +Mat] {
    *
    * See also [[FlowOps.splitWhen]].
    */
-  def splitAfter(p: Out ⇒ Boolean): SubFlow[Out, Mat, Repr, Closed] = ???
+  def splitAfter(p: Out ⇒ Boolean): SubFlow[Out, Mat, Repr, Closed] = {
+    val merge = new SubFlowImpl.MergeBack[Out, Repr] {
+      override def apply[T](flow: Flow[Out, T, Unit], breadth: Int): Repr[T] =
+        deprecatedAndThen[Source[Out, Unit]](Split.after(p.asInstanceOf[Any ⇒ Boolean]))
+          .map(_.via(flow))
+          .flatMapConcat(identity)
+          .asInstanceOf[Repr[T]]
+    }
+    val finish: (Sink[Out, Unit]) ⇒ Closed = s ⇒
+      deprecatedAndThen[Source[Out, Unit]](Split.after(p.asInstanceOf[Any ⇒ Boolean]))
+        .to(Sink.foreach(_.runWith(s)(GraphInterpreter.currentInterpreter.materializer)))
+        .asInstanceOf[Closed]
+    new SubFlowImpl(Flow[Out], merge, finish)
+  }
 
   /**
    * Transform each input element into a `Source` of output elements that is
@@ -1259,6 +1289,8 @@ trait FlowOps[+Out, +Mat] {
     }
 
   def withAttributes(attr: Attributes): Repr[Out]
+
+  def named(name: String): Repr[Out] = withAttributes(Attributes.name(name))
 
   /** INTERNAL API */
   private[scaladsl] def andThen[T](op: SymbolicStage[Out, T]): Repr[T] =

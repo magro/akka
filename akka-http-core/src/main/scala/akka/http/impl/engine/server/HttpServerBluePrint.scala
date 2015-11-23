@@ -77,7 +77,7 @@ private[http] object HttpServerBluePrint {
         .splitWhen(x ⇒ x.isInstanceOf[MessageStart] || x == MessageEnd)
         .prefixAndTail(1)
         .map {
-          case (RequestStart(method, uri, protocol, hdrs, createEntity, _, _) :: Nil, entityParts) ⇒
+          case (Seq(RequestStart(method, uri, protocol, hdrs, createEntity, _, _)), entityParts) ⇒
             val effectiveMethod = if (method == HttpMethods.HEAD && transparentHeadRequests) HttpMethods.GET else method
             val effectiveHeaders =
               if (settings.remoteAddressHeader && remoteAddress.isDefined)

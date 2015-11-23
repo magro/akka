@@ -295,10 +295,10 @@ class ResponseParserSpec extends FreeSpec with Matchers with BeforeAndAfterAll {
         .splitWhen(x ⇒ x.isInstanceOf[MessageStart] || x.isInstanceOf[EntityStreamError])
         .prefixAndTail(1)
         .collect {
-          case (ResponseStart(statusCode, protocol, headers, createEntity, close) :: Nil, entityParts) ⇒
+          case (Seq(ResponseStart(statusCode, protocol, headers, createEntity, close)), entityParts) ⇒
             closeAfterResponseCompletion :+= close
             Right(HttpResponse(statusCode, headers, createEntity(entityParts), protocol))
-          case ((x @ (MessageStartError(_, _) | EntityStreamError(_))) :: Nil, _) ⇒ Left(x)
+          case (Seq(x @ (MessageStartError(_, _) | EntityStreamError(_))), _) ⇒ Left(x)
         }.mergeBack(1)
 
     def collectBlocking[T](source: Source[T, Any]): Seq[T] =

@@ -13,6 +13,9 @@ import akka.stream.testkit.Utils._
 import org.reactivestreams.Publisher
 import akka.stream.Attributes
 import akka.stream.ActorAttributes
+import org.scalatest.concurrent.ScalaFutures
+import org.scalactic.ConversionCheckedTripleEquals
+import org.scalatest.concurrent.PatienceConfiguration.Timeout
 
 object FlowGroupBySpec {
   import language.higherKinds
@@ -23,7 +26,7 @@ object FlowGroupBySpec {
 
 }
 
-class FlowGroupBySpec extends AkkaSpec {
+class FlowGroupBySpec extends AkkaSpec with ScalaFutures with ConversionCheckedTripleEquals {
   import FlowGroupBySpec._
 
   val settings = ActorMaterializerSettings(system)
@@ -102,6 +105,16 @@ class FlowGroupBySpec extends AkkaSpec {
         masterSubscription.request(1)
         masterSubscriber.expectComplete()
       }
+    }
+
+    "work in normal user scenario" in {
+      Source(List("Aaa", "Abb", "Bcc", "Cdd", "Cee"))
+        .groupBy(_.substring(0, 1))
+        .grouped(10)
+        .mergeBack(1)
+        .grouped(10)
+        .runWith(Sink.head)
+        .futureValue(Timeout(3.seconds)) should ===(List(List("Aaa", "Abb"), List("Bcc"), List("Cdd", "Cee")))
     }
 
     "accept cancellation of substreams" in assertAllStagesStopped {

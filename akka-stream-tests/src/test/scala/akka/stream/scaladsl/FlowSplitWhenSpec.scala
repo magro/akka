@@ -10,14 +10,16 @@ import akka.stream.Supervision.resumingDecider
 import akka.stream.testkit.Utils._
 import akka.stream.testkit._
 import org.reactivestreams.Publisher
-
 import scala.concurrent.duration._
+import akka.stream.StreamSubscriptionTimeoutSettings
+import akka.stream.StreamSubscriptionTimeoutTerminationMode
 
 class FlowSplitWhenSpec extends AkkaSpec {
   import FlowSplitAfterSpec._
 
   val settings = ActorMaterializerSettings(system)
     .withInputBuffer(initialSize = 2, maxSize = 2)
+    .withSubscriptionTimeoutSettings(StreamSubscriptionTimeoutSettings(StreamSubscriptionTimeoutTerminationMode.cancel, 1.second))
 
   implicit val materializer = ActorMaterializer(settings)
 
@@ -78,6 +80,7 @@ class FlowSplitWhenSpec extends AkkaSpec {
         s2.request(1)
         s2.expectComplete()
 
+        masterSubscription.request(1)
         masterSubscriber.expectComplete()
       }
     }
@@ -93,6 +96,7 @@ class FlowSplitWhenSpec extends AkkaSpec {
         s1.expectNext(3)
         s1.expectComplete()
 
+        masterSubscription.request(1)
         masterSubscriber.expectComplete()
       }
     }
