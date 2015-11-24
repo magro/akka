@@ -105,7 +105,7 @@ public class RecipeReduceByKeyTest extends RecipeTest {
 
         Source<Pair<String, Integer>, BoxedUnit> counts = words.via(reduceByKey(
           MAXIMUM_DISTINCT_WORDS,
-          word -> word, // TODO
+          word -> word,
           key -> 0,
           (count, elem) -> count + 1,
           mat));

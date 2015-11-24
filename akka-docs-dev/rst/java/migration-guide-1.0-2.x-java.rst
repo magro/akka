@@ -422,7 +422,7 @@ should be replaced by:
 .. includecode:: code/docs/MigrationsJava.java#query-param
 
 SynchronousFileSource and SynchronousFileSink
-============================================
+=============================================
 
 Both have been replaced by ``Source.file(…)`` and ``Sink.file(…)`` due to discoverability issues
 paired with names which leaked internal implementation details.
