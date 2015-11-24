@@ -123,7 +123,7 @@ futures never finish if the additional group streams are not consumed. This typi
 this buffer which either able to contain all the group streams (which ensures that they are already running and folding)
 or fails with an explicit failure instead of a silent deadlock.
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/stream/cookbook/RecipeReduceByKey.java#word-count
+.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/stream/cookbook/RecipeReduceByKeyTest.java#word-count
 
 By extracting the parts specific to *wordcount* into
 
@@ -133,9 +133,9 @@ By extracting the parts specific to *wordcount* into
 
 we get a generalized version below:
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/stream/cookbook/RecipeReduceByKey.java#reduce-by-key-general
+.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/stream/cookbook/RecipeReduceByKeyTest.java#reduce-by-key-general
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/stream/cookbook/RecipeReduceByKey.java#reduce-by-key-general2
+.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/stream/cookbook/RecipeReduceByKeyTest.java#reduce-by-key-general2
 
 .. note::
   Please note that the reduce-by-key version we discussed above is sequential, in other words it is **NOT** a
@@ -155,7 +155,7 @@ To achieve the desired result, we attack the problem in two steps:
 * Then we take this new stream of message topic pairs (containing a separate pair for each topic a given message
   belongs to) and feed it into groupBy, using the topic as the group key.
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/stream/cookbook/RecipeMultiGroupBy.java#multi-groupby
+.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/stream/cookbook/RecipeMultiGroupByTest.java#multi-groupby
 
 Working with Graphs
 ===================

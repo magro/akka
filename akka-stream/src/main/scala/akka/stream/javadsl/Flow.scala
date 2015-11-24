@@ -577,7 +577,6 @@ final class Flow[-In, +Out, +Mat](delegate: scaladsl.Flow[In, Out, Mat]) extends
    * '''Completes when''' upstream completes or upstream failed with exception pf can handle
    *
    * '''Cancels when''' downstream cancels
-   *
    */
   def recover[T >: Out](pf: PartialFunction[Throwable, T]): javadsl.Flow[In, T, Mat] =
     new Flow(delegate.recover(pf))
@@ -706,7 +705,7 @@ final class Flow[-In, +Out, +Mat](delegate: scaladsl.Flow[In, Out, Mat]) extends
     new Flow(delegate.transform(() ⇒ mkStage.create()))
 
   /**
-   * Takes up to `n` elements from the stream (less than `n` only if the upstream completes before emitting `n` elements)
+   * Takes up to `n` elements from the stream (less than `n` if the upstream completes before emitting `n` elements)
    * and returns a pair containing a strict sequence of the taken element
    * and a stream representing the remaining elements. If ''n'' is zero or negative, then this will return a pair
    * of an empty collection and a stream containing the whole upstream unchanged.
@@ -733,12 +732,20 @@ final class Flow[-In, +Out, +Mat](delegate: scaladsl.Flow[In, Out, Mat]) extends
    * This operation demultiplexes the incoming stream into separate output
    * streams, one for each element key. The key is computed for each element
    * using the given function. When a new key is encountered for the first time
-   * it is emitted to the downstream subscriber together with a fresh
-   * flow that will eventually produce all the elements of the substream
-   * for that key. Not consuming the elements from the created streams will
-   * stop this processor from processing more elements, therefore you must take
-   * care to unblock (or cancel) all of the produced streams even if you want
-   * to consume only one of them.
+   * a new substream is opened and subsequently fed with all elements belonging to
+   * that key.
+   *
+   * The object returned from this method is not a normal [[Flow]],
+   * it is a [[SubFlow]]. This means that after this combinator all transformations
+   * are applied to all encountered substreams in the same fashion. Substream mode
+   * is exited either by closing the substream (i.e. connecting it to a [[Sink]])
+   * or by merging the substreams back together; see the `to` and `mergeBack` methods
+   * on [[SubFlow]] for more information.
+   *
+   * It is important to note that the substreams also propagate back-pressure as
+   * any other stream, which means that blocking one substream will block the `groupBy`
+   * operator itself&mdash;and thereby all substreams&mdash; once all internal or
+   * explicit buffers are filled.
    *
    * If the group by function `f` throws an exception and the supervision decision
    * is [[akka.stream.Supervision#stop]] the stream and substreams will be completed
@@ -782,6 +789,18 @@ final class Flow[-In, +Out, +Mat](delegate: scaladsl.Flow[In, Out, Mat]) extends
    * true, false        // subsequent substreams operate the same way
    * }}}
    *
+   * The object returned from this method is not a normal [[Flow]],
+   * it is a [[SubFlow]]. This means that after this combinator all transformations
+   * are applied to all encountered substreams in the same fashion. Substream mode
+   * is exited either by closing the substream (i.e. connecting it to a [[Sink]])
+   * or by merging the substreams back together; see the `to` and `mergeBack` methods
+   * on [[SubFlow]] for more information.
+   *
+   * It is important to note that the substreams also propagate back-pressure as
+   * any other stream, which means that blocking one substream will block the `splitWhen`
+   * operator itself&mdash;and thereby all substreams&mdash; once all internal or
+   * explicit buffers are filled.
+   *
    * If the split predicate `p` throws an exception and the supervision decision
    * is [[akka.stream.Supervision#stop]] the stream and substreams will be completed
    * with failure.
@@ -799,7 +818,7 @@ final class Flow[-In, +Out, +Mat](delegate: scaladsl.Flow[In, Out, Mat]) extends
    * '''Completes when''' upstream completes
    *
    * '''Cancels when''' downstream cancels and substreams cancel
-    *
+   *
    * See also [[Flow.splitAfter]].
    */
   def splitWhen(p: function.Predicate[Out]): SubFlow[In, Out, Mat] =
@@ -816,6 +835,18 @@ final class Flow[-In, +Out, +Mat](delegate: scaladsl.Flow[In, Out, Mat]) extends
    * false, true,        // elements go into second substream
    * false, false, true  // elements go into third substream
    * }}}
+   *
+   * The object returned from this method is not a normal [[Flow]],
+   * it is a [[SubFlow]]. This means that after this combinator all transformations
+   * are applied to all encountered substreams in the same fashion. Substream mode
+   * is exited either by closing the substream (i.e. connecting it to a [[Sink]])
+   * or by merging the substreams back together; see the `to` and `mergeBack` methods
+   * on [[SubFlow]] for more information.
+   *
+   * It is important to note that the substreams also propagate back-pressure as
+   * any other stream, which means that blocking one substream will block the `splitAfter`
+   * operator itself&mdash;and thereby all substreams&mdash; once all internal or
+   * explicit buffers are filled.
    *
    * If the split predicate `p` throws an exception and the supervision decision
    * is [[akka.stream.Supervision.Stop]] the stream and substreams will be completed
@@ -965,7 +996,7 @@ final class Flow[-In, +Out, +Mat](delegate: scaladsl.Flow[In, Out, Mat]) extends
   def zipMat[T, M, M2](that: Graph[SourceShape[T], M],
                        matF: function.Function2[Mat, M, M2]): javadsl.Flow[In, Out @uncheckedVariance Pair T, M2] =
     this.viaMat(Flow.fromGraph(FlowGraph.create(that,
-      new function.Function2[FlowGraph.Builder[M], SourceShape[T], FlowShape[Out, Out @ uncheckedVariance Pair T]] {
+      new function.Function2[FlowGraph.Builder[M], SourceShape[T], FlowShape[Out, Out @uncheckedVariance Pair T]] {
         def apply(b: FlowGraph.Builder[M], s: SourceShape[T]): FlowShape[Out, Out @uncheckedVariance Pair T] = {
           val zip: FanInShape2[Out, T, Out Pair T] = b.add(Zip.create[Out, T])
           b.from(s).toInlet(zip.in1)

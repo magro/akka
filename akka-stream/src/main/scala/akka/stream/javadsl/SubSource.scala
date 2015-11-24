@@ -31,7 +31,10 @@ class SubSource[+Out, +Mat](delegate: scaladsl.SubFlow[Out, Mat, scaladsl.Source
    * that this will lead to deadlocks if the sub-flows need to make progress
    * concurrently (as is generally the case when using `groupBy` on an unordered
    * input stream).
+   *
+   * WARNING: currently only a breadth of 1 is actually implemented! Beware of deadlocks!
    */
+  // FIXME remove doc warning once fixed
   def mergeBack(breadth: Int): Source[Out, Mat] =
     new Source(delegate.mergeBack(breadth))
 

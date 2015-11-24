@@ -30,17 +30,22 @@ class RecipeMultiGroupBy extends RecipeSpec {
         topicsForMessage.map(msg -> _)
       }
 
-      val multiGroups: Source[(Topic, Source[String, Unit]), Unit] = messageAndTopic
+      val multiGroups = messageAndTopic
         .groupBy(_._2).map {
-          case (topic, topicStream) =>
-            // chopping of the topic from the (Message, Topic) pairs
-            (topic, topicStream.map(_._1))
+          case (msg, topic) =>
+            // do what needs to be done
+            //#multi-groupby
+            (msg, topic)
+          //#multi-groupby
         }
       //#multi-groupby
 
-      val result = multiGroups.map {
-        case (topic, topicMessages) => topicMessages.grouped(10).map(topic.name + _.mkString("[", ", ", "]")).runWith(Sink.head)
-      }.mapAsync(4)(identity).grouped(10).runWith(Sink.head)
+      val result = multiGroups
+        .grouped(10)
+        .mergeBack(5)
+        .map(g => g.head._2.name + g.map(_._1).mkString("[", ", ", "]"))
+        .grouped(10)
+        .runWith(Sink.head)
 
       Await.result(result, 3.seconds).toSet should be(Set(
         "1[1: a, 1: b, all: c, all: d, 1: e]",

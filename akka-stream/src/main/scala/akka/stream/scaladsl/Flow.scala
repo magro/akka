@@ -25,7 +25,7 @@ import akka.stream.impl.fusing.GraphInterpreter
  * A `Flow` is a set of stream processing steps that has one open input and one open output.
  */
 final class Flow[-In, +Out, +Mat](private[stream] override val module: Module)
-  extends FlowOpsMat[Out, Mat] with Graph[FlowShape[In, Out], Mat] {
+    extends FlowOpsMat[Out, Mat] with Graph[FlowShape[In, Out], Mat] {
 
   override val shape: FlowShape[In, Out] = module.shape.asInstanceOf[FlowShape[In, Out]]
 
@@ -880,12 +880,20 @@ trait FlowOps[+Out, +Mat] {
    * This operation demultiplexes the incoming stream into separate output
    * streams, one for each element key. The key is computed for each element
    * using the given function. When a new key is encountered for the first time
-   * it is emitted to the downstream subscriber together with a fresh
-   * flow that will eventually produce all the elements of the substream
-   * for that key. Not consuming the elements from the created streams will
-   * stop this processor from processing more elements, therefore you must take
-   * care to unblock (or cancel) all of the produced streams even if you want
-   * to consume only one of them.
+   * a new substream is opened and subsequently fed with all elements belonging to
+   * that key.
+   *
+   * The object returned from this method is not a normal [[Source]] or [[Flow]],
+   * it is a [[SubFlow]]. This means that after this combinator all transformations
+   * are applied to all encountered substreams in the same fashion. Substream mode
+   * is exited either by closing the substream (i.e. connecting it to a [[Sink]])
+   * or by merging the substreams back together; see the `to` and `mergeBack` methods
+   * on [[SubFlow]] for more information.
+   *
+   * It is important to note that the substreams also propagate back-pressure as
+   * any other stream, which means that blocking one substream will block the `groupBy`
+   * operator itself&mdash;and thereby all substreams&mdash; once all internal or
+   * explicit buffers are filled.
    *
    * If the group by function `f` throws an exception and the supervision decision
    * is [[akka.stream.Supervision.Stop]] the stream and substreams will be completed
@@ -907,13 +915,27 @@ trait FlowOps[+Out, +Mat] {
    */
   def groupBy[K](f: Out ⇒ K): SubFlow[Out, Mat, Repr, Closed] = {
     implicit def mat = GraphInterpreter.currentInterpreter.materializer
+    def makeEager[T]: Graph[FlowShape[T, T], Unit] = new GraphStage[FlowShape[T, T]] {
+      val in = Inlet[T]("in")
+      val out = Outlet[T]("out")
+      override val shape = FlowShape(in, out)
+      override def createLogic(attr: Attributes) = new GraphStageLogic(shape) {
+        passAlong(in, out, doFinish = true, doFail = true)
+        setHandler(out, eagerTerminateOutput)
+        override def preStart(): Unit = pull(in)
+      }
+    }
     val merge = new SubFlowImpl.MergeBack[Out, Repr] {
       override def apply[T](flow: Flow[Out, T, Unit], breadth: Int): Repr[T] =
         deprecatedAndThen[Source[Out, Unit]](GroupBy(f.asInstanceOf[Any ⇒ Any]))
-          .map(_.via(flow))
+          .map(_.via(flow).via(makeEager) /* needed to start generating some demand */ )
           .map(s ⇒ Source(s.runWith(Sink.publisher(false)))) // need to be eager as a workaround for now
+          .buffer(4, OverflowStrategy.Backpressure) // needed to make reduceByKey recipe work
           .flatMapConcat(identity)
           .asInstanceOf[Repr[T]]
+      /*
+       * FIXME remove all those commented workarounds above by implementing flatMapMerge(breadth)
+       */
     }
     val finish: (Sink[Out, Unit]) ⇒ Closed = s ⇒
       deprecatedAndThen[Source[Out, Unit]](GroupBy(f.asInstanceOf[Any ⇒ Any]))
@@ -942,6 +964,18 @@ trait FlowOps[+Out, +Mat] {
    * true, false, false // first substream starts from the split-by element
    * true, false        // subsequent substreams operate the same way
    * }}}
+   *
+   * The object returned from this method is not a normal [[Source]] or [[Flow]],
+   * it is a [[SubFlow]]. This means that after this combinator all transformations
+   * are applied to all encountered substreams in the same fashion. Substream mode
+   * is exited either by closing the substream (i.e. connecting it to a [[Sink]])
+   * or by merging the substreams back together; see the `to` and `mergeBack` methods
+   * on [[SubFlow]] for more information.
+   *
+   * It is important to note that the substreams also propagate back-pressure as
+   * any other stream, which means that blocking one substream will block the `splitWhen`
+   * operator itself&mdash;and thereby all substreams&mdash; once all internal or
+   * explicit buffers are filled.
    *
    * If the split predicate `p` throws an exception and the supervision decision
    * is [[akka.stream.Supervision.Stop]] the stream and substreams will be completed
@@ -989,6 +1023,18 @@ trait FlowOps[+Out, +Mat] {
    * false, true,        // elements go into second substream
    * false, false, true  // elements go into third substream
    * }}}
+   *
+   * The object returned from this method is not a normal [[Source]] or [[Flow]],
+   * it is a [[SubFlow]]. This means that after this combinator all transformations
+   * are applied to all encountered substreams in the same fashion. Substream mode
+   * is exited either by closing the substream (i.e. connecting it to a [[Sink]])
+   * or by merging the substreams back together; see the `to` and `mergeBack` methods
+   * on [[SubFlow]] for more information.
+   *
+   * It is important to note that the substreams also propagate back-pressure as
+   * any other stream, which means that blocking one substream will block the `splitAfter`
+   * operator itself&mdash;and thereby all substreams&mdash; once all internal or
+   * explicit buffers are filled.
    *
    * If the split predicate `p` throws an exception and the supervision decision
    * is [[akka.stream.Supervision.Stop]] the stream and substreams will be completed
